@@ -5,10 +5,34 @@
 # dependencies = ["phue", "flask"]
 # ///
 
-from flask import Flask, request, render_template_string
+import os
+from flask import Flask, request, render_template_string, send_from_directory, send_file
 from phue import Bridge
 
 app = Flask(__name__)
+
+
+@app.route("/static/manifest.json")
+def manifest():
+    return send_from_directory(
+        "static", "manifest.json", mimetype="application/manifest+json"
+    )
+
+
+@app.route("/static/icon.svg")
+def icon():
+    return send_from_directory("static", "icon.svg", mimetype="image/svg+xml")
+
+
+@app.route("/static/icon-192.png")
+def icon_192():
+    return send_from_directory("static", "icon-192.png", mimetype="image/png")
+
+
+@app.route("/static/icon-512.png")
+def icon_512():
+    return send_from_directory("static", "icon-512.png", mimetype="image/png")
+
 
 # Initialize bridge (loads from config if available)
 b = Bridge()
@@ -20,7 +44,8 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hue Lights Control</title>
+    <title>Lights LAN Control</title>
+    <link rel="manifest" href="/static/manifest.json" type="application/manifest+json">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -205,8 +230,9 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Hue Lights Control</h1>
+      <div class="container">
+           <h1>Lights LAN Control</h1>
+           <button id="install-button" style="display:none; padding: 10px 20px; background: #FFD700; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">Install App</button>
         <div class="section">
             <h2>All Lights</h2>
             <form method="post" style="text-align: center;">
@@ -267,8 +293,38 @@ HTML_TEMPLATE = """
         <div class="message {{ 'success' if 'successfully' in message or 'turned' in message else 'error' }}">
             {{ message }}
         </div>
-        {% endif %}
-    </div>
+         {% endif %}
+     </div>
+     <script>
+         let deferredPrompt;
+
+         window.addEventListener('beforeinstallprompt', (e) => {
+             e.preventDefault();
+             deferredPrompt = e;
+             document.getElementById('install-button').style.display = 'block';
+         });
+
+         document.getElementById('install-button').addEventListener('click', () => {
+             if (deferredPrompt) {
+                 deferredPrompt.prompt();
+                 deferredPrompt.userChoice.then((choiceResult) => {
+                     if (choiceResult.outcome === 'accepted') {
+                         console.log('User accepted the install');
+                         document.getElementById('install-button').style.display = 'none';
+                     } else {
+                         console.log('User dismissed the install');
+                     }
+                     deferredPrompt = null;
+                 });
+             }
+         });
+
+         if ('serviceWorker' in navigator) {
+             navigator.serviceWorker.register('/static/sw.js')
+                 .then(reg => console.log('Service Worker registered'))
+                 .catch(err => console.log('Service Worker registration failed:', err));
+         }
+     </script>
 </body>
 </html>
 """
