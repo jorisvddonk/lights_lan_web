@@ -123,6 +123,44 @@ HTML_TEMPLATE = """
             background: linear-gradient(45deg, #38a169, #2f855a);
             transform: scale(1.05);
         }
+        .activate-scene {
+            background: linear-gradient(45deg, #9f7aea, #805ad5);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+        .activate-scene:hover {
+            background: linear-gradient(45deg, #805ad5, #6b46c1);
+            transform: scale(1.05);
+        }
+        .activate-scene-small {
+            background: linear-gradient(45deg, #9f7aea, #805ad5);
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: auto;
+        }
+        .activate-scene-small:hover {
+            background: linear-gradient(45deg, #805ad5, #6b46c1);
+            transform: scale(1.05);
+        }
+        .scenes-for-group {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
         .all-off:hover {
             background: linear-gradient(45deg, #dd6b20, #c05621);
             transform: scale(1.05);
@@ -192,6 +230,16 @@ HTML_TEMPLATE = """
                         <button type="submit" name="action" value="off" class="off">Turn Off</button>
                     </form>
                 </div>
+                <div class="scenes-for-group">
+                    {% for scene in scenes_by_group.get(group_id, []) %}
+                    <form method="post" style="display: inline;">
+                        <input type="hidden" name="type" value="scene">
+                        <input type="hidden" name="id" value="{{ scene.scene_id }}">
+                        <input type="hidden" name="group" value="{{ scene.group }}">
+                        <button type="submit" name="action" value="activate" class="activate-scene-small">{{ scene.name }}</button>
+                    </form>
+                    {% endfor %}
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -214,6 +262,7 @@ HTML_TEMPLATE = """
             </div>
             {% endfor %}
         </div>
+
         {% if message %}
         <div class="message {{ 'success' if 'successfully' in message or 'turned' in message else 'error' }}">
             {{ message }}
@@ -255,6 +304,11 @@ def index():
                 elif action == "off":
                     b.set_group(int(item_id), "on", False)
                     message = f"Zone {item_id} turned off."
+            elif item_type == "scene" and item_id:
+                if action == "activate":
+                    group_id = int(request.form.get("group"))
+                    b.activate_scene(group_id, item_id)
+                    message = f"Scene {item_id} activated."
         except Exception as e:
             message = f"Error: {e}"
     # Separate groups and zones
@@ -294,8 +348,28 @@ def index():
         print(f"Debug: Exception in loading groups: {e}")
         groups = {}
         zones = {}
+    try:
+        scenes = b.scenes
+        scenes_by_group = {}
+        for scene in scenes:
+            try:
+                gid = int(scene.group)
+            except (ValueError, TypeError):
+                continue
+            if gid not in scenes_by_group:
+                scenes_by_group[gid] = []
+            scenes_by_group[gid].append(scene)
+    except Exception as e:
+        print(f"Debug: Exception in loading scenes: {e}")
+        scenes = []
+        scenes_by_group = {}
     return render_template_string(
-        HTML_TEMPLATE, groups=groups, zones=zones, message=message
+        HTML_TEMPLATE,
+        groups=groups,
+        zones=zones,
+        scenes=scenes,
+        scenes_by_group=scenes_by_group,
+        message=message,
     )
 
 
