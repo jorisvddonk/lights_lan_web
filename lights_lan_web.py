@@ -313,7 +313,6 @@ def index():
             message = f"Error: {e}"
     # Separate groups and zones
     try:
-        print(f"Debug: b.groups = {b.groups}, type = {type(b.groups)}")
         if hasattr(b, "groups"):
             if isinstance(b.groups, dict):
                 groups = {
@@ -345,7 +344,6 @@ def index():
             groups = {}
             zones = {}
     except Exception as e:
-        print(f"Debug: Exception in loading groups: {e}")
         groups = {}
         zones = {}
     try:
@@ -360,7 +358,6 @@ def index():
                 scenes_by_group[gid] = []
             scenes_by_group[gid].append(scene)
     except Exception as e:
-        print(f"Debug: Exception in loading scenes: {e}")
         scenes = []
         scenes_by_group = {}
     return render_template_string(
